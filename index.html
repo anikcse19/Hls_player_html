@@ -36,27 +36,75 @@
       object-fit: cover;
     }
 
-    .controls {
+    .overlay {
       position: absolute;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .overlay img {
+      position: absolute;
+      top: 50%;
+      left: 10px;
+      width: 100px;
+      background-color: darkgrey;
+      height: auto;
+      animation: bounce 1s infinite;
+    }
+
+    /* Define the bounce keyframes */
+    @keyframes bounce {
+
+      0%,
+      100% {
+        transform: translateY(-25%);
+        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+      }
+
+      50% {
+        transform: translateY(0);
+        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+      }
+    }
+
+    /* Apply the bounce animation to an element */
+    .bounce {
+      animation: bounce 1s infinite;
+    }
+
+
+    .moving-line-container {
+      position: relative;
+      margin-top: 20px;
+      width: 100%;
+      height: 50px;
+      background-color: black;
       display: flex;
-      gap: 10px;
+      justify-content: center;
+      align-items: center;
     }
 
-    button {
-      padding: 10px 20px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 16px;
+    .moving-line {
+      position: absolute;
+
+      color: blue;
+      font-weight: 700;
+      width: 100vw;
+      white-space: nowrap;
+      animation: moveLine 20s linear infinite;
     }
 
-    button:hover {
-      background-color: #2980b9;
+    @keyframes moveLine {
+      0% {
+        left: -100px;
+      }
+
+      100% {
+        left: 100vw;
+      }
     }
 
     .loading,
@@ -74,88 +122,103 @@
 <body>
   <div class="video-container">
     <video id="videoPlayer" controls playsinline muted></video>
-    <!-- <div class="controls">
-      <button id="playPauseBtn">Play Fullscreen</button>
-    </div> -->
-    <div id="loadingText" class="loading">Loading stream...</div>
+    <div id="loadingText" class="loading">
+      <img src="/animate-logo.gif" alt="">
+    </div>
     <div id="errorText" class="error" style="display: none;">An error occurred</div>
+
+    <!-- Overlay content -->
+    <div class="overlay">
+      <img src="/logo-1.png" alt="Logo" />
+      <div class="moving-line-container">
+        <div class="moving-line">বাংলাদেশে অনলাইন গেমিংয়ের জনপ্রিয়তা বৃদ্ধি পাচ্ছে, এবং যারা তাদের ঘরের আরাম থেকে
+          ক্যাসিনো গেমের রোমাঞ্চ উপভোগ করতে
+          চান, তাদের জন্য একটি নির্ভরযোগ্য এবং উত্তেজনাপূর্ণ অনলাইন ক্যাসিনো প্ল্যাটফর্ম খুঁজে পাওয়া অত্যন্ত
+          গুরুত্বপূর্ণ
+          হয়ে
+          উঠেছে।</div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script>
     const video = document.getElementById('videoPlayer');
-    const playPauseBtn = document.getElementById('playPauseBtn');
     const loadingText = document.getElementById('loadingText');
     const errorText = document.getElementById('errorText');
     const streamUrl = "https://st3.1ten.live/memfs/3af832e1-c6ac-4f78-81c8-cdda2f9594b4.m3u8";
     let hls;
+    let retryCount = 0;
+    const maxRetries = 10; // Set maximum number of retries
+    const retryDelay = 10000; // 10 seconds delay between retries
 
-    // Initialize HLS.js
-    if (Hls.isSupported()) {
-      hls = new Hls();
-      hls.loadSource(streamUrl);
-      hls.attachMedia(video);
+    // Function to initialize the HLS stream
+    function initializeStream() {
+      if (Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
 
-      hls.on(Hls.Events.MANIFEST_PARSED, () => {
-        loadingText.style.display = 'none';
-        video.muted = true; // Autoplay with muted video
-        video.play().catch((err) => {
-          console.log("Autoplay prevented:", err);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          loadingText.style.display = 'none';
+          video.muted = true; // Autoplay with muted video
+          video.play().catch((err) => {
+            console.log("Autoplay prevented:", err);
+          });
         });
-      });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          switch (data.type) {
-            case Hls.ErrorTypes.NETWORK_ERROR:
-              errorText.textContent = "Network error - Please check your connection";
-              hls.startLoad();
-              break;
-            case Hls.ErrorTypes.MEDIA_ERROR:
-              errorText.textContent = "Media error - Unsupported format";
-              hls.recoverMediaError();
-              break;
-            default:
-              hls.destroy();
-              errorText.textContent = "An unknown error occurred";
-              break;
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            handleHlsError(data);
           }
-          errorText.style.display = 'block';
-        }
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Support for Safari
-      video.src = streamUrl;
-      video.addEventListener('loadedmetadata', () => {
-        loadingText.style.display = 'none';
-        video.play().catch((err) => {
-          console.log("Autoplay prevented:", err);
         });
-      });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Support for Safari
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => {
+          loadingText.style.display = 'none';
+          video.play().catch((err) => {
+            console.log("Autoplay prevented:", err);
+          });
+        });
+      }
     }
 
-    // Toggle play/pause and request fullscreen
-    playPauseBtn.addEventListener('click', () => {
-      if (video.paused) {
-        requestFullScreen();
-        video.play();
-        playPauseBtn.textContent = "Pause";
+    // Function to handle HLS errors
+    function handleHlsError(data) {
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+          errorText.textContent = "Network error - Retrying...";
+          attemptRetry();
+          break;
+        case Hls.ErrorTypes.MEDIA_ERROR:
+          errorText.textContent = "Media error - Recovering...";
+          hls.recoverMediaError();
+          break;
+        default:
+          errorText.textContent = "An unknown error occurred - Retrying...";
+          attemptRetry();
+          break;
+      }
+      errorText.style.display = 'block';
+    }
+
+    // Function to attempt retry
+    function attemptRetry() {
+      if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(() => {
+          errorText.style.display = 'none';
+          hls.destroy();
+          initializeStream();
+        }, retryDelay);
       } else {
-        video.pause();
-        playPauseBtn.textContent = "Play Fullscreen";
-      }
-    });
-
-    // Request fullscreen
-    function requestFullScreen() {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) { /* Safari */
-        video.webkitRequestFullscreen();
-      } else if (video.msRequestFullscreen) { /* IE11 */
-        video.msRequestFullscreen();
+        errorText.textContent = "Maximum retry attempts reached.";
       }
     }
+
+    // Initialize the stream on load
+    initializeStream();
   </script>
 </body>
 
