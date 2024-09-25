@@ -44,6 +44,7 @@
       transform: translate(-50%, -50%);
       color: white;
       font-size: 24px;
+      z-index: 10;
     }
 
     .buffering-overlay {
@@ -58,6 +59,7 @@
       align-items: center;
       color: white;
       font-size: 24px;
+      z-index: 10;
     }
 
     /* Hide the progress bar for Webkit browsers (e.g., Chrome, Safari) */
@@ -73,6 +75,55 @@
     /* Hide the progress bar for older versions of IE */
     video::-ms-media-controls-timeline {
       display: none !important;
+    }
+
+    /* Responsive styles for large screens */
+    @media (min-width: 1200px) {
+      video {
+        object-fit: fill;
+      }
+
+      .loading,
+      .error {
+        font-size: 32px;
+      }
+
+      .buffering-overlay {
+        font-size: 32px;
+      }
+    }
+
+    /* Responsive styles for tablets and mobile */
+    @media (max-width: 768px) {
+
+      .loading,
+      .error {
+        font-size: 18px;
+      }
+
+      video {
+        object-fit: contain;
+      }
+
+      .buffering-overlay {
+        font-size: 18px;
+      }
+    }
+
+    @media (max-width: 480px) {
+
+      .loading,
+      .error {
+        font-size: 16px;
+      }
+
+      video {
+        object-fit: contain;
+      }
+
+      .buffering-overlay {
+        font-size: 16px;
+      }
     }
   </style>
 </head>
@@ -93,7 +144,7 @@
     const loadingText = document.getElementById('loadingText');
     const errorText = document.getElementById('errorText');
     const bufferingOverlay = document.getElementById('bufferingOverlay');
-    const streamUrl = "https://m1.1tentv.online/clone/7105/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://m1.1tentv.online/clone/7100/tracks-v1a1/mono.m3u8";
 
     let hls;
     let retryCount = 0;
