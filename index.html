@@ -36,103 +36,6 @@
       object-fit: cover;
     }
 
-    .overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    .overlay img {
-      position: absolute;
-      top: -15px;
-      right: 110px;
-      width: 200px;
-      height: auto;
-      /* animation: bounce 1s infinite; */
-    }
-
-    @media only screen and (max-width: 600px) {
-      .overlay img {
-        right: 5px;
-        width: 150px;
-      }
-    }
-
-    @media only screen and (max-width: 768px) {
-      .overlay img {
-        right: 5px;
-        width: 150px;
-      }
-    }
-
-    @media only screen and (max-width: 992px) {
-      .overlay img {
-        right: 5px;
-        width: 150px;
-      }
-    }
-
-    @media only screen and (max-width: 1200px) {
-      .overlay img {
-        right: 5px;
-        width: 150px;
-      }
-    }
-
-    /* Define the bounce keyframes */
-    @keyframes bounce {
-
-      0%,
-      100% {
-        transform: translateY(-25%);
-        animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
-      }
-
-      50% {
-        transform: translateY(0);
-        animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
-      }
-    }
-
-    /* Apply the bounce animation to an element */
-    .bounce {
-      animation: bounce 1s infinite;
-    }
-
-
-    .moving-line-container {
-      position: relative;
-      /* margin-top: 20px; */
-      width: 100%;
-      height: 30px;
-      background-color: #EAE9E8;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    .moving-line {
-      position: absolute;
-      color: black;
-      font-weight: 700;
-      width: 100vw;
-      white-space: nowrap;
-      animation: moveLine 20s linear infinite;
-    }
-
-    @keyframes moveLine {
-      0% {
-        left: -100px;
-      }
-
-      100% {
-        left: 100vw;
-      }
-    }
-
     .loading,
     .error {
       position: absolute;
@@ -150,13 +53,26 @@
       width: 100%;
       height: 100%;
       background-color: rgba(0, 0, 0, 0.5);
-      /* Semi-transparent overlay */
       display: none;
-      /* Hide the overlay initially */
       justify-content: center;
       align-items: center;
       color: white;
       font-size: 24px;
+    }
+
+    /* Hide the progress bar for Webkit browsers (e.g., Chrome, Safari) */
+    video::-webkit-media-controls-timeline {
+      display: none !important;
+    }
+
+    /* Hide the progress bar for Firefox */
+    video::-moz-media-controls-progressbar {
+      display: none !important;
+    }
+
+    /* Hide the progress bar for older versions of IE */
+    video::-ms-media-controls-timeline {
+      display: none !important;
     }
   </style>
 </head>
@@ -165,27 +81,10 @@
   <div class="video-container">
     <video id="videoPlayer" controls playsinline muted></video>
     <div id="loadingText" class="loading">
-      <img src="/animate-logo.gif" alt="">
+      <img src="/cover-live.png" alt="Loading...">
     </div>
     <div id="errorText" class="error" style="display: none;">An error occurred</div>
-
-    <!-- Buffering overlay -->
-    <div id="bufferingOverlay" class="buffering-overlay">
-      Buffering...
-    </div>
-
-    <!-- Overlay content -->
-    <!-- <div class="overlay">
-      <img src="/logo-1.png" alt="Logo" />
-      <div class="moving-line-container">
-        <div class="moving-line">বাংলাদেশে অনলাইন গেমিংয়ের জনপ্রিয়তা বৃদ্ধি পাচ্ছে, এবং যারা তাদের ঘরের আরাম থেকে
-          ক্যাসিনো গেমের রোমাঞ্চ উপভোগ করতে
-          চান, তাদের জন্য একটি নির্ভরযোগ্য এবং উত্তেজনাপূর্ণ অনলাইন ক্যাসিনো প্ল্যাটফর্ম খুঁজে পাওয়া অত্যন্ত
-          গুরুত্বপূর্ণ
-          হয়ে
-          উঠেছে।</div>
-      </div>
-    </div> -->
+    <div id="bufferingOverlay" class="buffering-overlay">Buffering...</div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -194,7 +93,7 @@
     const loadingText = document.getElementById('loadingText');
     const errorText = document.getElementById('errorText');
     const bufferingOverlay = document.getElementById('bufferingOverlay');
-    const streamUrl = "https://m1.1tentv.online/clone/7104/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://m1.1tentv.online/clone/7105/tracks-v1a1/mono.m3u8";
 
     let hls;
     let retryCount = 0;
@@ -208,7 +107,6 @@
       liveMaxLatencyDuration: 120,
     };
 
-    // Initialize the HLS stream
     function initializeStream() {
       if (Hls.isSupported()) {
         hls = new Hls(hlsConfig);
@@ -217,20 +115,19 @@
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           loadingText.style.display = 'none';
-          video.muted = true; // Autoplay with muted video
+          video.muted = true;
           video.play().catch((err) => {
             console.log("Autoplay prevented:", err);
           });
         });
 
-        // Handle buffering events
         hls.on(Hls.Events.BUFFER_STALLED, () => {
-          bufferingOverlay.style.display = 'flex'; // Show overlay
-          video.pause(); // Freeze the last frame
+          bufferingOverlay.style.display = 'flex';
+          video.pause();
         });
 
         hls.on(Hls.Events.BUFFER_APPENDED, () => {
-          bufferingOverlay.style.display = 'none'; // Hide overlay when buffer refills
+          bufferingOverlay.style.display = 'none';
           video.play().catch((err) => {
             console.log("Play prevented:", err);
           });
@@ -252,7 +149,6 @@
       }
     }
 
-    // Handle HLS errors
     function handleHlsError(data) {
       switch (data.type) {
         case Hls.ErrorTypes.NETWORK_ERROR:
@@ -271,7 +167,6 @@
       errorText.style.display = 'block';
     }
 
-    // Attempt to retry loading the stream
     function attemptRetry() {
       if (retryCount < maxRetries) {
         retryCount++;
@@ -285,9 +180,7 @@
       }
     }
 
-    // Initialize the stream on load
     initializeStream();
-
   </script>
 </body>
 
