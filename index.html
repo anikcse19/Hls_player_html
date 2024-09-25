@@ -67,8 +67,20 @@
       display: none !important;
     }
 
+    /* Hide the time for Webkit browsers (e.g., Chrome, Safari) */
+    video::-webkit-media-controls-current-time-display,
+    video::-webkit-media-controls-time-remaining-display {
+      display: none !important;
+    }
+
     /* Hide the progress bar for Firefox */
     video::-moz-media-controls-progressbar {
+      display: none !important;
+    }
+
+    /* Hide the time for Firefox */
+    video::-moz-media-controls-current-time-display,
+    video::-moz-media-controls-time-remaining-display {
       display: none !important;
     }
 
@@ -76,6 +88,13 @@
     video::-ms-media-controls-timeline {
       display: none !important;
     }
+
+    /* Hide the time for older versions of IE */
+    video::-ms-media-controls-current-time-display,
+    video::-ms-media-controls-time-remaining-display {
+      display: none !important;
+    }
+
 
     /* Responsive styles for large screens */
     @media (min-width: 1200px) {
