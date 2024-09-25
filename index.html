@@ -45,6 +45,13 @@
       color: white;
       font-size: 24px;
       z-index: 10;
+      text-align: center;
+    }
+
+    .loading img {
+      width: 100%;
+      max-width: 600px;
+      /* Limit the maximum size */
     }
 
     .buffering-overlay {
@@ -95,6 +102,11 @@
 
     /* Responsive styles for tablets and mobile */
     @media (max-width: 768px) {
+      .loading img {
+        max-width: 80%;
+        padding: 10px;
+        /* Padding around the image */
+      }
 
       .loading,
       .error {
@@ -111,6 +123,11 @@
     }
 
     @media (max-width: 480px) {
+      .loading img {
+        max-width: 90%;
+        padding: 15px;
+        /* More padding for smaller screens */
+      }
 
       .loading,
       .error {
@@ -150,6 +167,7 @@
     let retryCount = 0;
     const maxRetries = 10;
     const retryDelay = 10000;
+    let videoStartedPlaying = false;  // Track if video has started playing
 
     const hlsConfig = {
       maxBufferLength: 120,
@@ -165,16 +183,23 @@
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          loadingText.style.display = 'none';
+          // Don't hide the loading cover until the video actually starts playing
           video.muted = true;
           video.play().catch((err) => {
             console.log("Autoplay prevented:", err);
           });
         });
 
+        video.addEventListener('playing', () => {
+          loadingText.style.display = 'none';  // Hide cover once video starts playing
+          videoStartedPlaying = true;  // Set flag that video has started
+        });
+
         hls.on(Hls.Events.BUFFER_STALLED, () => {
-          bufferingOverlay.style.display = 'flex';
-          video.pause();
+          if (videoStartedPlaying) {  // Show buffering only after video has started
+            bufferingOverlay.style.display = 'flex';
+            video.pause();
+          }
         });
 
         hls.on(Hls.Events.BUFFER_APPENDED, () => {
@@ -192,7 +217,6 @@
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
         video.addEventListener('loadedmetadata', () => {
-          loadingText.style.display = 'none';
           video.play().catch((err) => {
             console.log("Autoplay prevented:", err);
           });
