@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fullscreen HLS Live Stream Player</title>
+  <title>Fullscreen HLS Live Stream Player with Custom Controls</title>
   <style>
     * {
       margin: 0;
@@ -22,133 +22,89 @@
       position: fixed;
       top: 0;
       left: 0;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      height: 100%;
       background-color: black;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow: hidden;
     }
 
     video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-width: 100%;
+      max-height: 100%;
+      display: block;
+      pointer-events: none;
+      object-fit: contain;
     }
 
-    .loading,
-    .error {
+    /* Fullscreen styles for large screens */
+    @media (min-width: 1024px) {
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+
+
+    .controls {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 24px;
-      z-index: 10;
+      bottom: 20px;
+      left: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      z-index: 100;
+      padding: 10px;
+      display: none;
     }
 
-    .buffering-overlay {
+    .controls button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+
+    .controls button:hover {
+      color: yellow;
+    }
+
+    #loadingImage {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      display: none;
+      display: flex;
       justify-content: center;
       align-items: center;
-      color: white;
-      font-size: 24px;
-      z-index: 10;
+      background-color: black;
+      z-index: 5;
     }
 
-    /* Hide the progress bar for Webkit browsers (e.g., Chrome, Safari) */
-    video::-webkit-media-controls-timeline {
-      display: none !important;
+    #loadingImage img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
     }
 
-    /* Hide the time for Webkit browsers (e.g., Chrome, Safari) */
-    video::-webkit-media-controls-current-time-display,
-    video::-webkit-media-controls-time-remaining-display {
-      display: none !important;
+    :fullscreen .controls,
+    :fullscreen .controls.show {
+      display: flex;
     }
 
-    /* Hide the progress bar for Firefox */
-    video::-moz-media-controls-progressbar {
-      display: none !important;
+    .controls.show {
+      display: flex;
     }
 
-    /* Hide the time for Firefox */
-    video::-moz-media-controls-current-time-display,
-    video::-moz-media-controls-time-remaining-display {
-      display: none !important;
-    }
-
-    /* Hide the progress bar for older versions of IE */
-    video::-ms-media-controls-timeline {
-      display: none !important;
-    }
-
-    /* Hide the time for older versions of IE */
-    video::-ms-media-controls-current-time-display,
-    video::-ms-media-controls-time-remaining-display {
-      display: none !important;
-    }
-
-
-    /* Responsive styles for large screens */
-    @media (min-width: 1200px) {
-      video {
-        object-fit: fill;
-      }
-
-      .loading,
-      .error {
-        font-size: 32px;
-      }
-
-      .buffering-overlay {
-        font-size: 32px;
-      }
-    }
-
-    /* Responsive styles for tablets and mobile */
-    @media (max-width: 768px) {
-
-      .loading,
-      .error {
-        font-size: 18px;
-      }
-
-      video {
-        object-fit: contain;
-      }
-
-      .buffering-overlay {
-        font-size: 18px;
-      }
-
-      .loading img {
-        object-fit: cover;
-        width: 100vw;
-
-
-      }
-    }
-
-    @media (max-width: 480px) {
-
-      .loading,
-      .error {
-        font-size: 16px;
-      }
-
-      video {
-        object-fit: contain;
-      }
-
-      .buffering-overlay {
-        font-size: 16px;
+    /* Responsive adjustments */
+    @media (max-width: 600px) {
+      .controls button {
+        font-size: 1rem;
       }
     }
   </style>
@@ -156,116 +112,150 @@
 
 <body>
   <div class="video-container">
-    <video id="videoPlayer" controls playsinline muted></video>
-    <div id="loadingText" class="loading">
+    <video id="videoPlayer" playsinline muted></video>
+
+    <div id="loadingImage">
       <img src="/cover-live.png" alt="Loading...">
     </div>
-    <div id="errorText" class="error" style="display: none;">An error occurred</div>
-    <div id="bufferingOverlay" class="buffering-overlay">Buffering...</div>
+
+    <div class="controls">
+      <i id="playBtn" class="fas fa-play" style="color: rgb(243, 225, 225); display: none; cursor: pointer;"></i>
+      <i id="pauseBtn" class="fas fa-pause" style="color: rgb(243, 225, 225); cursor: pointer;"></i>
+      <div style="display: flex; align-items: center; gap: 40px;">
+        <i id="muteBtn" class="fa-solid fa-volume-xmark"
+          style="color: rgb(243, 225, 225); cursor: pointer; display: block;"></i>
+        <i id="unMuteBtn" class="fa-solid fa-volume-high"
+          style="color: rgb(243, 225, 225); cursor: pointer; display: none;"></i>
+        <button id="fullscreenBtn" style="cursor: pointer; color: rgb(243, 225, 225);">
+          <i class="fa-solid fa-expand"></i>
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://kit.fontawesome.com/7db33c2b3c.js" crossorigin="anonymous"></script>
+
   <script>
     const video = document.getElementById('videoPlayer');
-    const loadingText = document.getElementById('loadingText');
-    const errorText = document.getElementById('errorText');
-    const bufferingOverlay = document.getElementById('bufferingOverlay');
-    const streamUrl = "https://pm2.1tentv.online/clone/7112/tracks-v1a1/mono.m3u8";
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const muteBtn = document.getElementById('muteBtn');
+    const unMuteBtn = document.getElementById('unMuteBtn');
+    const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const loadingImage = document.getElementById('loadingImage');
+    const controls = document.querySelector('.controls');
+    const streamUrl = "https://pm2.1tentv.online/clone/250/tracks-v1a1/mono.m3u8";
 
     let hls;
-    let retryCount = 0;
-    const maxRetries = 10;
-    const retryDelay = 10000;
-    let videoStartedPlaying = false;  // Track if video has started playing
 
-    const hlsConfig = {
-      maxBufferLength: 120,
-      maxMaxBufferLength: 160,
-      liveSyncDuration: 60,
-      liveMaxLatencyDuration: 120,
-    };
-
+    // Initialize the stream and set up event listeners
     function initializeStream() {
+      video.controls = false; // Disable native controls
       if (Hls.isSupported()) {
-        hls = new Hls({
-          ...hlsConfig,
-          startLevel: 1,  // Start at a lower quality level to reduce load time
-        });
+        hls = new Hls();
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          video.muted = true;
-          video.play().catch((err) => {
+          video.play().catch(err => {
             console.log("Autoplay prevented:", err);
           });
         });
 
         video.addEventListener('playing', () => {
-          loadingText.style.display = 'none';
-          videoStartedPlaying = true;
-        });
-
-        hls.on(Hls.Events.BUFFER_STALLED, () => {
-          if (videoStartedPlaying) {
-            video.pause();
-          }
-        });
-
-        hls.on(Hls.Events.BUFFER_APPENDED, () => {
-          video.play().catch((err) => {
-            console.log("Play prevented:", err);
-          });
-        });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            handleHlsError(data);
-          }
+          loadingImage.style.display = 'none';
+          controls.classList.add('show'); // Show controls when playing
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
         video.addEventListener('loadedmetadata', () => {
-          video.play().catch((err) => {
+          video.play().catch(err => {
             console.log("Autoplay prevented:", err);
           });
         });
       }
+
+      // Set the correct button state based on the initial mute status
+      updateMuteUnmuteButtons();
     }
 
-
-    function handleHlsError(data) {
-      switch (data.type) {
-        case Hls.ErrorTypes.NETWORK_ERROR:
-          errorText.textContent = "Network error - Retrying...";
-          attemptRetry();
-          break;
-        case Hls.ErrorTypes.MEDIA_ERROR:
-          errorText.textContent = "Media error - Recovering...";
-          hls.recoverMediaError();
-          break;
-        default:
-          errorText.textContent = "An unknown error occurred - Retrying...";
-          attemptRetry();
-          break;
-      }
-      errorText.style.display = 'block';
-    }
-
-    function attemptRetry() {
-      if (retryCount < maxRetries) {
-        retryCount++;
-        setTimeout(() => {
-          errorText.style.display = 'none';
-          hls.destroy();
-          initializeStream();
-        }, retryDelay);
+    // Function to update the mute/unmute button display
+    function updateMuteUnmuteButtons() {
+      if (video.muted) {
+        muteBtn.style.display = 'block';
+        unMuteBtn.style.display = 'none';
       } else {
-        errorText.textContent = "Maximum retry attempts reached.";
+        muteBtn.style.display = 'none';
+        unMuteBtn.style.display = 'block';
       }
     }
 
     initializeStream();
+
+    // Play Button functionality
+    playBtn.addEventListener('click', () => {
+      video.play();
+      playBtn.style.display = 'none';
+      pauseBtn.style.display = 'block';
+    });
+
+    // Pause Button functionality
+    pauseBtn.addEventListener('click', () => {
+      video.pause();
+      playBtn.style.display = 'block';
+      pauseBtn.style.display = 'none';
+    });
+
+    // Mute Button functionality
+    muteBtn.addEventListener('click', () => {
+      video.muted = false; // Mute the video
+      updateMuteUnmuteButtons();
+    });
+
+    // Unmute Button functionality
+    unMuteBtn.addEventListener('click', () => {
+      video.muted = true; // Unmute the video
+      updateMuteUnmuteButtons();
+    });
+
+    // Fullscreen Button functionality
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        if (video.requestFullscreen) {
+          video.requestFullscreen();
+        } else if (video.webkitRequestFullscreen) {  // For Safari
+          video.webkitRequestFullscreen();
+        } else if (video.mozRequestFullScreen) {  // For Firefox
+          video.mozRequestFullScreen();
+        } else if (video.msRequestFullscreen) {  // For IE/Edge
+          video.msRequestFullscreen();
+        }
+
+        // Explicitly show controls when fullscreen is requested
+        controls.classList.add('show');
+        // fullscreenBtn.textContent = 'Minimize'; // Change to "Minimize"
+      } else {
+        document.exitFullscreen();
+
+        // Explicitly show controls when exiting fullscreen
+        controls.classList.add('show');
+      }
+    });
+
+    // Listen for fullscreen changes to toggle button text and controls visibility
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        // fullscreenBtn.textContent = 'Fullscreen'; // Change back to "Fullscreen"
+        controls.classList.add('show'); // Show controls when exiting fullscreen
+      } else {
+        // fullscreenBtn.textContent = 'Minimize'; // Change to "Minimize" when in fullscreen
+        controls.classList.add('show'); // Show custom controls when in fullscreen
+      }
+    });
+
+    // Ensure controls are hidden initially
+    controls.classList.remove('show'); // Start with controls hidden
   </script>
 </body>
 
