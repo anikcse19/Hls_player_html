@@ -170,7 +170,7 @@
     const loadingText = document.getElementById('loadingText');
     const errorText = document.getElementById('errorText');
     const bufferingOverlay = document.getElementById('bufferingOverlay');
-    const streamUrl = "https://m1.1tentv.online/clone/7100/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://pm2.1tentv.online/clone/7112/tracks-v1a1/mono.m3u8";
 
     let hls;
     let retryCount = 0;
@@ -187,12 +187,14 @@
 
     function initializeStream() {
       if (Hls.isSupported()) {
-        hls = new Hls(hlsConfig);
+        hls = new Hls({
+          ...hlsConfig,
+          startLevel: 1,  // Start at a lower quality level to reduce load time
+        });
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          // Don't hide the loading cover until the video actually starts playing
           video.muted = true;
           video.play().catch((err) => {
             console.log("Autoplay prevented:", err);
@@ -200,19 +202,17 @@
         });
 
         video.addEventListener('playing', () => {
-          loadingText.style.display = 'none';  // Hide cover once video starts playing
-          videoStartedPlaying = true;  // Set flag that video has started
+          loadingText.style.display = 'none';
+          videoStartedPlaying = true;
         });
 
         hls.on(Hls.Events.BUFFER_STALLED, () => {
-          if (videoStartedPlaying) {  // Show buffering only after video has started
-            bufferingOverlay.style.display = 'flex';
+          if (videoStartedPlaying) {
             video.pause();
           }
         });
 
         hls.on(Hls.Events.BUFFER_APPENDED, () => {
-          bufferingOverlay.style.display = 'none';
           video.play().catch((err) => {
             console.log("Play prevented:", err);
           });
@@ -232,6 +232,7 @@
         });
       }
     }
+
 
     function handleHlsError(data) {
       switch (data.type) {
