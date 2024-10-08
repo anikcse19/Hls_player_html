@@ -4,6 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    integrity="sha512-KymZQmWtnGxkAFm9CtvRFcUXApoFm2Zgzy+f2NB3aLpS3c0NYWX9c2zpKToI0owGzzD65+qfEVTY75loRdDUZg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
   <title>Fullscreen HLS Live Stream Player with Custom Controls</title>
   <style>
     * {
@@ -59,6 +63,7 @@
       z-index: 100;
       padding: 10px;
       display: none;
+
     }
 
     .controls button {
@@ -118,23 +123,46 @@
       <img src="/cover-live.png" alt="Loading...">
     </div>
 
+
+
     <div class="controls">
-      <i id="playBtn" class="fas fa-play" style="color: rgb(243, 225, 225); display: none; cursor: pointer;"></i>
-      <i id="pauseBtn" class="fas fa-pause" style="color: rgb(243, 225, 225); cursor: pointer;"></i>
+      <img id="playBtn"
+        style="background-color: white; border-radius: 50%;width: 30px; color: rgb(243, 225, 225);display: none;  cursor: pointer;"
+        src="/playBtn.png" alt="">
+      <img id="pauseBtn" src="/pauseBtn.png"
+        style="background-color: white; border-radius: 50%; width: 30px; color: rgb(243, 225, 225); cursor: pointer;"
+        alt="">
+      <!-- <i id="playBtn" class="fas fa-play" style="color: rgb(243, 225, 225); display: none; cursor: pointer;"></i>
+      <i id="pauseBtn" class="fas fa-pause" style="color: rgb(243, 225, 225); cursor: pointer;"></i> -->
+
+
       <div style="display: flex; align-items: center; gap: 40px;">
-        <i id="muteBtn" class="fa-solid fa-volume-xmark"
-          style="color: rgb(243, 225, 225); cursor: pointer; display: block;"></i>
-        <i id="unMuteBtn" class="fa-solid fa-volume-high"
-          style="color: rgb(243, 225, 225); cursor: pointer; display: none;"></i>
-        <button id="fullscreenBtn" style="cursor: pointer; color: rgb(243, 225, 225);">
+        <img id="muteBtn"
+          style="background-color: white; border-radius: 50%;width: 30px; padding: 4px; color: rgb(243, 225, 225);display: block;  cursor: pointer;"
+          src="/muteBtn.png" alt="">
+        <!-- <i id="muteBtn" class="fa-solid fa-volume-xmark"
+          style="color: rgb(243, 225, 225); cursor: pointer; display: block;"></i> -->
+        <img id="unMuteBtn"
+          style="background-color: white; border-radius: 50%;width: 30px; color: rgb(243, 225, 225);display: none;  cursor: pointer;"
+          src="/unmute.png" alt="">
+
+        <!-- <i id="unMuteBtn" class="fa-solid fa-volume-high"
+          style="color: rgb(243, 225, 225); cursor: pointer; display: none;"></i> -->
+
+        <img id="fullscreenBtn"
+          style="background-color: white; border-radius: 50%;width: 30px; padding: 4px; color: rgb(243, 225, 225);  cursor: pointer;"
+          src="/expand.jpg" alt="">
+
+        <!-- <button id="fullscreenBtn" style="cursor: pointer; color: rgb(243, 225, 225);">
           <i class="fa-solid fa-expand"></i>
-        </button>
+        </button> -->
       </div>
     </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://kit.fontawesome.com/7db33c2b3c.js" crossorigin="anonymous"></script>
+
+  <!-- <script src="https://kit.fontawesome.com/7db33c2b3c.js" crossorigin="anonymous"></script> -->
 
   <script>
     const video = document.getElementById('videoPlayer');
@@ -145,15 +173,25 @@
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const loadingImage = document.getElementById('loadingImage');
     const controls = document.querySelector('.controls');
-    const streamUrl = "https://pm2.1tentv.online/clone/250/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://pm2.1tentv.online/clone/313/tracks-v1a1/mono.m3u8";
 
     let hls;
+    let retryCount = 0;
+    const maxRetries = 5;  // Retry 5 times
+    const retryDelay = 10000; // Retry after 10 seconds
+    let videoStartedPlaying = false;
 
+    const hlsConfig = {
+      maxBufferLength: 120,
+      maxMaxBufferLength: 160,
+      liveSyncDuration: 60,
+      liveMaxLatencyDuration: 120,
+    };
     // Initialize the stream and set up event listeners
     function initializeStream() {
       video.controls = false; // Disable native controls
       if (Hls.isSupported()) {
-        hls = new Hls();
+        hls = new Hls(hlsConfig);
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
@@ -167,6 +205,13 @@
           loadingImage.style.display = 'none';
           controls.classList.add('show'); // Show controls when playing
         });
+
+        // Handle errors
+        hls.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            handleHlsError(data);
+          }
+        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = streamUrl;
         video.addEventListener('loadedmetadata', () => {
@@ -179,6 +224,32 @@
       // Set the correct button state based on the initial mute status
       updateMuteUnmuteButtons();
     }
+    // Log errors and retry on fatal errors
+    function handleHlsError(data) {
+      console.log("HLS Error: ", data);
+
+      switch (data.type) {
+        case Hls.ErrorTypes.NETWORK_ERROR:
+        case Hls.ErrorTypes.MEDIA_ERROR:
+        default:
+          attemptRetry();
+          break;
+      }
+    }
+
+    // Retry the stream after delay, up to 5 times
+    function attemptRetry() {
+      if (retryCount < maxRetries) {
+        retryCount++;
+        setTimeout(() => {
+          hls.destroy();
+          initializeStream();
+        }, retryDelay);
+      } else {
+        console.log("Maximum retry attempts reached.");
+      }
+    }
+
 
     // Function to update the mute/unmute button display
     function updateMuteUnmuteButtons() {
