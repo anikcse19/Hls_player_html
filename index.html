@@ -63,12 +63,12 @@
     }
 
     .controls #doubleBtn {
-      display: flex !important
+      display: flex !important;
     }
 
     @media (min-width: 650px) {
       .controls #doubleBtn {
-        display: none !important
+        display: none !important;
       }
     }
 
@@ -128,8 +128,6 @@
       .video-container:hover #doubleBtn {
         display: flex !important;
       }
-
-
     }
   </style>
 </head>
@@ -147,7 +145,6 @@
         <!-- Mute/Unmute buttons always visible -->
         <img id="muteBtn" style="width: 20px; height: 20px;" src="/unmute.png" alt="Mute">
         <img id="unMuteBtn" style="width: 20px; height: 20px; display: none;" src="/muteBtn.png" alt="Unmute">
-
       </div>
 
       <!-- Fullscreen button -->
@@ -183,23 +180,30 @@
         hls = new Hls();
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
-        videoContainer.requestFullscreen();
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          videoContainer.requestFullscreen();
           video.play().catch(err => {
             console.log("Autoplay prevented:", err);
           });
+          // enterFullscreenIfLargeScreen();
         });
 
         video.addEventListener('playing', () => {
-          videoContainer.requestFullscreen();
           loadingImage.style.display = 'none'; // Hide the loading image once the video starts playing
         });
       }
     }
 
     initializeStream();
+
+    // Function to handle fullscreen for large screens
+    function enterFullscreenIfLargeScreen() {
+      if (window.innerWidth >= 1024) {
+        videoContainer.requestFullscreen().catch(err => {
+          console.log("Fullscreen mode not allowed: ", err);
+        });
+      }
+    }
 
     // Play and Pause button behavior
     video.addEventListener('play', () => {
@@ -235,7 +239,6 @@
       unMuteBtn.style.display = 'none';
     });
 
-    // Fullscreen button click event
     // Fullscreen button click event
     fullscreenBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
