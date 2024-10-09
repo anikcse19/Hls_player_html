@@ -62,7 +62,7 @@
       padding: 20px;
     }
 
-    .controls #doubleBtn {
+    /* .controls #doubleBtn {
       display: flex !important;
     }
 
@@ -70,11 +70,12 @@
       .controls #doubleBtn {
         display: none !important;
       }
-    }
+    } */
 
     /* Mute/Unmute buttons are always visible */
     #muteBtn,
-    #unMuteBtn {
+    #unMuteBtn,
+    #fullscreenBtn {
       background: none;
       border: none;
       color: white;
@@ -85,8 +86,7 @@
 
     /* Play, Pause, and Fullscreen buttons are hidden by default */
     #playBtn,
-    #pauseBtn,
-    #fullscreenBtn {
+    #pauseBtn {
       background: none;
       border: none;
       color: white;
@@ -142,18 +142,19 @@
 
     <div class="controls" style="display: flex; flex-direction: row; align-items: center; gap: 20px;">
       <div style="display: flex; align-items: center; gap: 40px;">
-        <!-- Mute/Unmute buttons always visible -->
-        <img id="muteBtn" style="width: 20px; height: 20px;" src="/unmute.png" alt="Mute">
-        <img id="unMuteBtn" style="width: 20px; height: 20px; display: none;" src="/muteBtn.png" alt="Unmute">
+        <!-- Play/Pause buttons (toggle based on video state) -->
+
+        <img id="playBtn" style="width: 20px; height: 20px;" src="/playBtn.png" alt="Play">
+        <img id="pauseBtn" style="width: 20px; height: 20px;" src="/pauseBtn.png" alt="Pause">
       </div>
 
       <!-- Fullscreen button -->
       <div id="doubleBtn"
         style="flex-grow: 1; width: 100%; display: flex; justify-content: space-between; align-items: center;">
-        <!-- Play/Pause buttons (toggle based on video state) -->
 
-        <img id="playBtn" style="width: 20px; height: 20px;" src="/playBtn.png" alt="Play">
-        <img id="pauseBtn" style="width: 20px; height: 20px;" src="/pauseBtn.png" alt="Pause">
+        <!-- Mute/Unmute buttons always visible -->
+        <img id="muteBtn" style="width: 20px; height: 20px;" src="/unmute.png" alt="Mute">
+        <img id="unMuteBtn" style="width: 20px; height: 20px; display: none;" src="/muteBtn.png" alt="Unmute">
         <img id="fullscreenBtn" style="width: 20px; height: 20px;" src="/expand.png" alt="Fullscreen">
       </div>
     </div>
