@@ -51,43 +51,63 @@
       }
     }
 
-    /* Hide controls by default */
     .controls {
       position: absolute;
-      bottom: 20px;
+      bottom: 0;
       left: 0;
       width: 100%;
       display: flex;
       justify-content: space-between;
       z-index: 100;
       padding: 20px;
-
-      display: none;
     }
 
-    .controls button {
+    .controls #doubleBtn {
+      display: flex !important
+    }
+
+    @media (min-width: 650px) {
+      .controls #doubleBtn {
+        display: none !important
+      }
+    }
+
+    /* Mute/Unmute buttons are always visible */
+    #muteBtn,
+    #unMuteBtn {
       background: none;
       border: none;
       color: white;
       font-size: 1.5rem;
       cursor: pointer;
+      display: block;
     }
 
-    .controls button:hover {
-      color: yellow;
+    /* Play, Pause, and Fullscreen buttons are hidden by default */
+    #playBtn,
+    #pauseBtn,
+    #fullscreenBtn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      display: none;
+      /* Hidden by default */
     }
 
+    /* Loading image */
     #loadingImage {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      background-color: black;
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: black;
-      z-index: 5;
+      z-index: 200;
     }
 
     #loadingImage img {
@@ -96,22 +116,20 @@
       object-fit: contain;
     }
 
-    .controls.show {
-      display: flex;
-    }
-
-    /* Show controls on hover for larger screens */
+    /* Show Play/Pause and Fullscreen on hover for large screens */
     @media (min-width: 1024px) {
-      .video-container:hover .controls {
-        display: flex;
-      }
-    }
 
-    /* Responsive adjustments */
-    @media (max-width: 600px) {
-      .controls button {
-        font-size: 1rem;
+      .video-container:hover #fullscreenBtn,
+      .video-container:hover #playBtn,
+      .video-container:hover #pauseBtn {
+        display: block;
       }
+
+      .video-container:hover #doubleBtn {
+        display: flex !important;
+      }
+
+
     }
   </style>
 </head>
@@ -124,27 +142,22 @@
       <img src="/cover-live.png" alt="Loading...">
     </div>
 
-    <div class="controls">
-
+    <div class="controls" style="display: flex; flex-direction: row; align-items: center; gap: 20px;">
       <div style="display: flex; align-items: center; gap: 40px;">
+        <!-- Mute/Unmute buttons always visible -->
+        <img id="muteBtn" style="width: 20px; height: 20px;" src="/unmute.png" alt="Mute">
+        <img id="unMuteBtn" style="width: 20px; height: 20px; display: none;" src="/muteBtn.png" alt="Unmute">
 
-        <img id="playBtn"
-          style="  width: 20px; height: 20px; color: rgb(243, 225, 225);display: none;  cursor: pointer;"
-          src="/playBtn.png" alt="">
-        <img id="pauseBtn" src="/pauseBtn.png"
-          style="  width: 20px; height: 20px; color: rgb(243, 225, 225); cursor: pointer;" alt="">
-        <img id="muteBtn"
-          style=" width: 20px; height: 20px; color: rgb(243, 225, 225);display: block;  cursor: pointer;"
-          src="/unmute.png" alt="">
-        <img id="unMuteBtn"
-          style="width: 20px; height: 20px; color: rgb(243, 225, 225);display: none;  cursor: pointer;"
-          src="/muteBtn.png" alt="">
       </div>
 
-      <div>
+      <!-- Fullscreen button -->
+      <div id="doubleBtn"
+        style="flex-grow: 1; width: 100%; display: flex; justify-content: space-between; align-items: center;">
+        <!-- Play/Pause buttons (toggle based on video state) -->
 
-        <img id="fullscreenBtn" style="width: 20px; height: 20px;   color: rgb(243, 225, 225);  cursor: pointer;"
-          src="/expand.png" alt="">
+        <img id="playBtn" style="width: 20px; height: 20px;" src="/playBtn.png" alt="Play">
+        <img id="pauseBtn" style="width: 20px; height: 20px;" src="/pauseBtn.png" alt="Pause">
+        <img id="fullscreenBtn" style="width: 20px; height: 20px;" src="/expand.png" alt="Fullscreen">
       </div>
     </div>
   </div>
@@ -158,132 +171,99 @@
     const muteBtn = document.getElementById('muteBtn');
     const unMuteBtn = document.getElementById('unMuteBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const videoContainer = document.querySelector('.video-container');
     const loadingImage = document.getElementById('loadingImage');
-    const controls = document.querySelector('.controls');
-    const streamUrl = "https://pm2.1tentv.online/clone/313/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://pm2.1tentv.online/clone/7102/tracks-v1a1/mono.m3u8";
     let hls;
-    let retryCount = 0;
-    const maxRetries = 5;  // Retry 5 times
-    const retryDelay = 10000; // Retry after 10 seconds
 
-    const hlsConfig = {
-      maxBufferLength: 120,
-      maxMaxBufferLength: 160,
-      liveSyncDuration: 60,
-      liveMaxLatencyDuration: 120,
-    };
-
+    // Initialize HLS stream
     function initializeStream() {
       video.controls = false;
       if (Hls.isSupported()) {
-        hls = new Hls(hlsConfig);
+        hls = new Hls();
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
+        videoContainer.requestFullscreen();
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          videoContainer.requestFullscreen();
           video.play().catch(err => {
             console.log("Autoplay prevented:", err);
           });
         });
 
         video.addEventListener('playing', () => {
-          loadingImage.style.display = 'none';
+          videoContainer.requestFullscreen();
+          loadingImage.style.display = 'none'; // Hide the loading image once the video starts playing
         });
-
-        hls.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            handleHlsError(data);
-          }
-        });
-      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = streamUrl;
-        video.addEventListener('loadedmetadata', () => {
-          video.play().catch(err => {
-            console.log("Autoplay prevented:", err);
-          });
-        });
-      }
-
-      updateMuteUnmuteButtons();
-    }
-
-    function handleHlsError(data) {
-      console.log("HLS Error: ", data);
-
-      switch (data.type) {
-        case Hls.ErrorTypes.NETWORK_ERROR:
-        case Hls.ErrorTypes.MEDIA_ERROR:
-        default:
-          attemptRetry();
-          break;
-      }
-    }
-
-    function attemptRetry() {
-      if (retryCount < maxRetries) {
-        retryCount++;
-        setTimeout(() => {
-          hls.destroy();
-          initializeStream();
-        }, retryDelay);
-      } else {
-        console.log("Maximum retry attempts reached.");
-      }
-    }
-
-    function updateMuteUnmuteButtons() {
-      if (video.muted) {
-        muteBtn.style.display = 'block';
-        unMuteBtn.style.display = 'none';
-      } else {
-        muteBtn.style.display = 'none';
-        unMuteBtn.style.display = 'block';
       }
     }
 
     initializeStream();
 
-    playBtn.addEventListener('click', () => {
-      video.play();
+    // Play and Pause button behavior
+    video.addEventListener('play', () => {
       playBtn.style.display = 'none';
       pauseBtn.style.display = 'block';
     });
 
-    pauseBtn.addEventListener('click', () => {
-      video.pause();
+    video.addEventListener('pause', () => {
       playBtn.style.display = 'block';
       pauseBtn.style.display = 'none';
     });
 
+    // Play button click event
+    playBtn.addEventListener('click', () => {
+      video.play();
+    });
+
+    // Pause button click event
+    pauseBtn.addEventListener('click', () => {
+      video.pause();
+    });
+
+    // Mute and Unmute buttons
     muteBtn.addEventListener('click', () => {
       video.muted = false;
-      updateMuteUnmuteButtons();
+      muteBtn.style.display = 'none';
+      unMuteBtn.style.display = 'block';
     });
 
     unMuteBtn.addEventListener('click', () => {
       video.muted = true;
-      updateMuteUnmuteButtons();
+      muteBtn.style.display = 'block';
+      unMuteBtn.style.display = 'none';
     });
 
+    // Fullscreen button click event
+    // Fullscreen button click event
     fullscreenBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
-        if (video.requestFullscreen) {
-          video.requestFullscreen();
-        } else if (video.webkitRequestFullscreen) {
-          video.webkitRequestFullscreen();
-        } else if (video.mozRequestFullScreen) {
-          video.mozRequestFullScreen();
-        } else if (video.msRequestFullscreen) {
-          video.msRequestFullscreen();
-        }
+        videoContainer.requestFullscreen();
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen();
       }
     });
 
-    // Show controls on click for smaller screens
-    document.addEventListener('click', (event) => {
+    // Show Play/Pause and Fullscreen buttons on click for small screens
+    videoContainer.addEventListener('click', () => {
       const windowWidth = window.innerWidth;
       if (windowWidth <= 1024) {
-        controls.classList.toggle('show');
+        fullscreenBtn.style.display = 'block';
+        if (video.paused) {
+          playBtn.style.display = 'block';
+          pauseBtn.style.display = 'none';
+        } else {
+          playBtn.style.display = 'none';
+          pauseBtn.style.display = 'block';
+        }
+
+        // Hide the controls after 3 seconds
+        setTimeout(() => {
+          fullscreenBtn.style.display = 'none';
+          playBtn.style.display = 'none';
+          pauseBtn.style.display = 'none';
+        }, 3000);
       }
     });
   </script>
