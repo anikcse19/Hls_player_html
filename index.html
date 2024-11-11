@@ -176,10 +176,14 @@
     let retryCount = 0;
     const maxRetries = 5;
 
-    // Initialize HLS stream
     function initializeStream() {
       if (Hls.isSupported()) {
-        hls = new Hls();
+        hls = new Hls({
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1024 * 1024
+        });
+
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
 
@@ -188,41 +192,51 @@
         });
 
         video.addEventListener('playing', () => {
-          loadingImage.style.display = 'none'; // Hide loading image
-          retryCount = 0; // Reset retry count on successful play
+          loadingImage.style.display = 'none';
+          retryCount = 0;
         });
 
-        // Error handling
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          console.error("HLS Error:", data);
-          handlePlaybackError(data);
-        });
+        video.addEventListener('stalled', handleStall);
+        video.addEventListener('error', handleVideoError);
+
+        hls.on(Hls.Events.ERROR, handleHlsError);
       }
     }
 
-    function playVideo() {
-      video.play().catch(err => {
-        console.log("Autoplay prevented:", err);
-      });
+    function handleStall() {
+      console.log("Video stalled. Attempting to recover...");
+      hls.destroy();
+      initializeStream();
     }
 
-    function handlePlaybackError(data) {
+    function handleVideoError() {
+      console.log("Video error. Attempting to recover...");
+      hls.destroy();
+      initializeStream();
+    }
+
+    function handleHlsError(event, data) {
+      console.error("HLS Error:", data);
       if (data.fatal) {
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
-            console.error("Network error encountered.");
+            console.log("Network error encountered. Retrying...");
             attemptRetry();
             break;
           case Hls.ErrorTypes.MEDIA_ERROR:
-            console.error("Media error encountered.");
-            // Attempt media recovery if applicable
+            console.log("Media error encountered. Attempting recovery...");
             if (retryCount < maxRetries) {
               hls.recoverMediaError();
+              retryCount++;
+            } else {
+              console.log("Max retries reached for media error. Reloading...");
+              hls.destroy();
+              initializeStream();
             }
             break;
           default:
-            console.error("An unrecoverable error occurred.");
-            hls.destroy(); // Clean up HLS instance
+            console.log("Unrecoverable error. Reloading page...");
+            location.reload();
             break;
         }
       }
@@ -233,16 +247,24 @@
         retryCount++;
         console.log(`Retrying... Attempt ${retryCount}/${maxRetries}`);
         setTimeout(() => {
-          initializeStream(); // Reinitialize the stream after a delay
-        }, 10000); // Retry after 10 seconds
+          initializeStream();
+        }, 5000); // Retry after 5 seconds
       } else {
-        console.log("Max retries reached. Please check the stream.");
+        console.log("Max retries reached for network error. Reloading...");
+        hls.destroy();
+        initializeStream();
       }
+    }
+
+    function playVideo() {
+      video.play().catch(err => {
+        console.log("Autoplay prevented. Waiting for user interaction.");
+      });
     }
 
     initializeStream();
 
-    // Play and Pause button behavior
+    // Play and Pause button logic
     video.addEventListener('play', () => {
       playBtn.style.display = 'none';
       pauseBtn.style.display = 'block';
@@ -253,12 +275,10 @@
       pauseBtn.style.display = 'none';
     });
 
-    // Play button click event
     playBtn.addEventListener('click', () => {
       video.play();
     });
 
-    // Pause button click event
     pauseBtn.addEventListener('click', () => {
       video.pause();
     });
@@ -276,16 +296,16 @@
       unMuteBtn.style.display = 'none';
     });
 
-    // Fullscreen button click event
+    // Fullscreen button
     fullscreenBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
         document.querySelector('.video-container').requestFullscreen();
-      } else if (document.fullscreenElement) {
+      } else {
         document.exitFullscreen();
       }
     });
-
   </script>
+
 </body>
 
 </html>
