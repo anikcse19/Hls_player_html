@@ -170,21 +170,66 @@
     const unMuteBtn = document.getElementById('unMuteBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const loadingImage = document.getElementById('loadingImage');
-    const streamUrl = "https://pm2.1tentv.online/clone/7100/tracks-v1a1/mono.m3u8";
+    const streamUrl = "https://yuppmedtaorire.akamaized.net/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/mazhavilmanorama_nim_https/050522/mazhavilmanorama/playlist.m3u8";
+    const controls = document.querySelector('.controls');
 
+    const logoPosition = 'top-right'; // Change to 'top-left', 'top-right', 'bottom-left', 'bottom-right'
+
+    let controlTimeout;
     let hls;
     let retryCount = 0;
     const maxRetries = 5;
+    let retryTimeout;
+
+    // Function to hide controls after 3 seconds of inactivity
+    function hideControls() {
+      controlTimeout = setTimeout(() => {
+        controls.style.opacity = '0';
+        controls.style.pointerEvents = 'none'; // Prevent accidental clicks
+      }, 5000);
+    }
+
+    // Function to show controls
+    function showControls() {
+      controls.style.opacity = '1';
+      controls.style.pointerEvents = 'auto'; // Enable clicks
+      clearTimeout(controlTimeout);
+      hideControls(); // Restart the timer
+    }
+
+    // Initially hide controls after 3 seconds
+    video.addEventListener('loadeddata', () => {
+      hideControls();
+    });
+
+    // Show controls on user interaction
+    video.addEventListener('click', showControls);
+    video.addEventListener('mousemove', showControls);
+    document.addEventListener('keydown', showControls);
+    document.addEventListener('touchstart', showControls); // For mobile users
+
+    // Hide controls when video plays and there is no interaction
+    video.addEventListener('play', hideControls);
+
+    // Prevent controls from disappearing while hovering over them
+    controls.addEventListener('mouseenter', () => {
+      clearTimeout(controlTimeout);
+    });
+    controls.addEventListener('mouseleave', hideControls);
 
     function initializeStream() {
       if (Hls.isSupported()) {
+        // Destroy previous HLS instance if it exists
+        if (hls) {
+          hls.destroy();
+          clearTimeout(retryTimeout);
+        }
+
         hls = new Hls({
-          // debug: true,
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
           maxBufferSize: 60 * 1024 * 1024
         });
-
 
         hls.loadSource(streamUrl);
         hls.attachMedia(video);
@@ -194,55 +239,45 @@
         });
 
         video.addEventListener('playing', () => {
-          loadingImage.style.display = 'none';
-          retryCount = 0;
+          loadingImage.style.display = 'none'; // Hide loading image when video plays
+          retryCount = 0; // Reset retry count on successful playback
         });
 
+        // Error and retry handling
         video.addEventListener('stalled', handleStall);
         video.addEventListener('error', handleVideoError);
-
         hls.on(Hls.Events.ERROR, handleHlsError);
       }
     }
 
+    // Handle stall by attempting a retry
     function handleStall() {
       console.log("Video stalled. Attempting to recover...");
-      hls.destroy();
-      initializeStream();
+      attemptRetry();
     }
 
+    // Handle generic video errors by attempting a retry
     function handleVideoError() {
       console.log("Video error. Attempting to recover...");
-      hls.destroy();
-      initializeStream();
-
+      attemptRetry();
     }
 
-
-    // Handle HLS.js errors with improved recovery logic
+    // Improved HLS error handling with image display on persistent errors
     function handleHlsError(event, data) {
       console.error("HLS Error:", data);
       if (data.fatal) {
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
             console.log("Network error encountered. Retrying...");
-            hls.startLoad(); // Refresh the live position
             attemptRetry();
             break;
           case Hls.ErrorTypes.MEDIA_ERROR:
             console.log("Media error encountered. Attempting recovery...");
-            if (retryCount < maxRetries) {
-              hls.recoverMediaError();
-              retryCount++;
-            } else {
-              console.log("Max retries reached for media error. Reinitializing HLS...");
-              hls.destroy();
-              initializeStream(); // Reinitialize HLS to handle persistent issues
-            }
+            attemptRetry();
             break;
           default:
-            console.log("Unrecoverable error. Reloading page...");
-            location.reload(); // Final fallback: full page reload
+            console.log("Unrecoverable error. Showing loading image...");
+            displayLoadingImage(); // Show loading image as final fallback
             break;
         }
       }
@@ -252,16 +287,28 @@
       if (retryCount < maxRetries) {
         retryCount++;
         console.log(`Retrying... Attempt ${retryCount}/${maxRetries}`);
-        setTimeout(() => {
-          initializeStream();
+
+        // Keep the video paused to retain the last visible frame during retry
+        video.pause();
+        loadingImage.style.display = 'none';
+
+        // Attempt to reload stream after a short delay
+        retryTimeout = setTimeout(() => {
+          hls.loadSource(streamUrl);
+          hls.attachMedia(video);
         }, 5000); // Retry after 5 seconds
       } else {
-        console.log("Max retries reached for network error. Reloading...");
-        hls.destroy();
-        initializeStream();
+        console.log("Max retries reached. Showing loading image.");
+        displayLoadingImage(); // Show loading image after max retries
       }
     }
 
+    function displayLoadingImage() {
+      loadingImage.style.display = 'flex'; // Show loading image
+      video.pause(); // Pause the video as it failed to load
+    }
+
+    // Play video with error handling for autoplay issues
     function playVideo() {
       video.play().catch(err => {
         console.log("Autoplay prevented. Waiting for user interaction.");
@@ -312,11 +359,6 @@
     });
 
 
-    // setInterval(() => {
-    //   if (hls && video.currentTime < hls.liveSyncPosition - 5) { // If lagging behind by 5 seconds
-    //     video.currentTime = hls.liveSyncPosition;
-    //   }
-    // }, 10000); // Check every 10 seconds
   </script>
 
 </body>
