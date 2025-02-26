@@ -258,6 +258,32 @@
     });
     controls.addEventListener('mouseleave', hideControls);
 
+
+
+
+    // resume playback after tab changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab is visible. Resuming playback...');
+        resumePlayback();
+      } else {
+        console.log('Tab is hidden. Pausing playback...');
+        video.pause();
+      }
+    }
+
+    function resumePlayback() {
+      if (video.paused || video.ended) {
+        console.log('Video is paused or ended. Attempting to resume...');
+        initializeStream(); // Reinitialize the stream
+        video.play().catch(err => {
+          console.error('Failed to resume playback:', err);
+        });
+      }
+    }
+
     function initializeStream() {
       if (Hls.isSupported()) {
         // Destroy previous HLS instance if it exists
