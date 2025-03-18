@@ -111,7 +111,7 @@
       position: absolute;
       z-index: 150;
       /* Ensure it's above the video but below controls */
-      width: 200px;
+      width: 80px;
       /* Adjust size as needed */
       height: auto;
     }
@@ -151,6 +151,32 @@
       .video-container:hover #doubleBtn {
         display: flex !important;
       }
+
+      #logo {
+        width: 100px;
+      }
+
+      .logo-top-left {
+        top: 30px;
+        left: 40px;
+      }
+
+      .logo-top-right {
+        top: 30px;
+        right: 40px;
+      }
+
+      .logo-bottom-left {
+        bottom: 60px;
+        /* Adjust to avoid overlapping with controls */
+        left: 40px;
+      }
+
+      .logo-bottom-right {
+        bottom: 60px;
+        /* Adjust to avoid overlapping with controls */
+        right: 40px;
+      }
     }
   </style>
 </head>
@@ -165,7 +191,7 @@
     </div>
 
     <!-- Logo -->
-    <!-- <img id="logo" src="/logo-1.png" alt="Logo"> -->
+    <img id="logo" src="/epickStream_logo.svg" alt="Logo">
 
     <!-- Controls -->
     <div class="controls" style="display: flex; flex-direction: row; align-items: center; gap: 20px;">
@@ -196,7 +222,7 @@
     const unMuteBtn = document.getElementById('unMuteBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
     const loadingImage = document.getElementById('loadingImage');
-    // const logo = document.getElementById('logo');
+    const logo = document.getElementById('logo');
     const streamUrl = "https://yuppmedtaorire.akamaized.net/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/mazhavilmanorama_nim_https/050522/mazhavilmanorama/playlist.m3u8";
     const controls = document.querySelector('.controls');
 
@@ -213,7 +239,7 @@
     }
 
     const randomPosition = logoPositions[Math.floor(Math.random() * logoPositions.length)];
-    // setLogoPosition(randomPosition);
+    setLogoPosition(randomPosition);
 
     let controlTimeout;
     let hls;
