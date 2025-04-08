@@ -226,6 +226,31 @@
     const streamUrl = "https://yuppmedtaorire.akamaized.net/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/mazhavilmanorama_nim_https/050522/mazhavilmanorama/playlist.m3u8";
     const controls = document.querySelector('.controls');
 
+
+
+    let currentWindow = window;
+    let depth = 0;
+
+    try {
+      // Count iframe nesting depth
+      while (currentWindow !== currentWindow.parent) {
+        currentWindow = currentWindow.parent;
+        depth++;
+      }
+
+      if (depth > 1) {
+        // More than one level of iframes = BLOCK
+        document.body.innerHTML = "Blocked: Nested iframes are not allowed.";
+        throw new Error("Too deeply nested in iframes");
+      }
+
+      // Otherwise (depth 0 or 1), everything is fine
+      console.log("Player loaded with iframe depth:", depth);
+    } catch (err) {
+      document.body.innerHTML = "Blocked: Unauthorized embedding.";
+      console.error(err);
+    }
+
     // Dynamic logo positions
     const logoPositions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
 
