@@ -240,14 +240,18 @@
 
       if (depth > 1) {
         // More than one level of iframes = BLOCK
-        document.body.innerHTML = "Blocked: Nested iframes are not allowed.";
+        // document.body.innerHTML = "Blocked: Nested iframes are not allowed.";
+        window.top.location.href = "https://www.google.com";
+
         throw new Error("Too deeply nested in iframes");
       }
 
       // Otherwise (depth 0 or 1), everything is fine
       console.log("Player loaded with iframe depth:", depth);
     } catch (err) {
-      document.body.innerHTML = "Blocked: Unauthorized embedding.";
+      // document.body.innerHTML = "Blocked: Unauthorized embedding.";
+      window.top.location.href = "https://www.google.com";
+
       console.error(err);
     }
 
