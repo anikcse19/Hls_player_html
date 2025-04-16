@@ -62,19 +62,20 @@
       padding: 20px;
     }
 
-    /* Mute/Unmute buttons are always visible */
+    /* Mute/Unmute, Fullscreen & Quality buttons are always visible */
     #muteBtn,
     #unMuteBtn,
-    #fullscreenBtn {
+    #fullscreenBtn,
+    #qualityBtn {
       background: none;
       border: none;
       color: white;
-      font-size: 1.5rem;
+      font-size: 1rem;
       cursor: pointer;
       display: block;
     }
 
-    /* Play, Pause, and Fullscreen buttons are hidden by default */
+    /* Play, Pause buttons are hidden by default */
     #playBtn,
     #pauseBtn {
       background: none;
@@ -83,7 +84,6 @@
       font-size: 1.5rem;
       cursor: pointer;
       display: none;
-      /* Hidden by default */
     }
 
     /* Loading image */
@@ -110,9 +110,7 @@
     #logo {
       position: absolute;
       z-index: 150;
-      /* Ensure it's above the video but below controls */
       width: 80px;
-      /* Adjust size as needed */
       height: auto;
     }
 
@@ -129,27 +127,48 @@
 
     .logo-bottom-left {
       bottom: 60px;
-      /* Adjust to avoid overlapping with controls */
       left: 10px;
     }
 
     .logo-bottom-right {
       bottom: 60px;
-      /* Adjust to avoid overlapping with controls */
       right: 10px;
     }
 
-    /* Show Play/Pause and Fullscreen on hover for large screens */
+    /* Dropdown for quality options */
+    #qualityOptions {
+      position: absolute;
+      bottom: 70px;
+      /* place above controls */
+      right: 60px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 1px solid #444;
+      border-radius: 4px;
+      overflow: hidden;
+      display: none;
+      flex-direction: column;
+      z-index: 300;
+    }
+
+    #qualityOptions div {
+      padding: 10px 15px;
+      color: white;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    #qualityOptions div:hover {
+      background: #555;
+    }
+
+    /* Show Play/Pause, Fullscreen and Quality on hover for large screens */
     @media (min-width: 1024px) {
 
       .video-container:hover #fullscreenBtn,
+      .video-container:hover #qualityBtn,
       .video-container:hover #playBtn,
       .video-container:hover #pauseBtn {
         display: block;
-      }
-
-      .video-container:hover #doubleBtn {
-        display: flex !important;
       }
 
       #logo {
@@ -168,13 +187,11 @@
 
       .logo-bottom-left {
         bottom: 60px;
-        /* Adjust to avoid overlapping with controls */
         left: 40px;
       }
 
       .logo-bottom-right {
         bottom: 60px;
-        /* Adjust to avoid overlapping with controls */
         right: 40px;
       }
     }
@@ -201,14 +218,27 @@
         <img id="pauseBtn" style="width: 20px; height: 20px;" src="/pauseBtn.png" alt="Pause">
       </div>
 
-      <!-- Fullscreen button -->
+      <!-- Additional controls: Quality, Mute/Unmute and Fullscreen -->
       <div id="doubleBtn"
         style="flex-grow: 1; width: 100%; display: flex; justify-content: space-between; align-items: center;">
         <!-- Mute/Unmute buttons always visible -->
         <img id="muteBtn" style="width: 20px; height: 20px;" src="/unmute.png" alt="Mute">
         <img id="unMuteBtn" style="width: 20px; height: 20px; display: none;" src="/muteBtn.png" alt="Unmute">
-        <img id="fullscreenBtn" style="width: 20px; height: 20px;" src="/expand.png" alt="Fullscreen">
+        <div style="display: flex; align-items: center; gap: 20px;">
+          <!-- Quality button -->
+          <button id="qualityBtn">Quality: Auto</button>
+          <!-- Fullscreen button -->
+          <img id="fullscreenBtn" style="width: 20px; height: 20px;" src="/expand.png" alt="Fullscreen">
+        </div>
       </div>
+    </div>
+
+    <!-- Quality selection dropdown -->
+    <div id="qualityOptions">
+      <div data-quality="auto">Auto</div>
+      <div data-quality="240p">240p</div>
+      <div data-quality="480p">480p</div>
+      <div data-quality="720p">720p</div>
     </div>
   </div>
 
@@ -221,103 +251,90 @@
     const muteBtn = document.getElementById('muteBtn');
     const unMuteBtn = document.getElementById('unMuteBtn');
     const fullscreenBtn = document.getElementById('fullscreenBtn');
+    const qualityBtn = document.getElementById('qualityBtn');
+    const qualityOptions = document.getElementById('qualityOptions');
     const loadingImage = document.getElementById('loadingImage');
     const logo = document.getElementById('logo');
-    const streamUrl = "https://yuppmedtaorire.akamaized.net/v1/master/a0d007312bfd99c47f76b77ae26b1ccdaae76cb1/mazhavilmanorama_nim_https/050522/mazhavilmanorama/playlist.m3u8";
-    const controls = document.querySelector('.controls');
+    // Default stream if no auto testing is done (you may update this as needed)
+    const defaultStreamUrl = "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8";
 
+    // Manual quality mapping
+    const manualQualities = {
+      "240p": "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8", // assign a 240p stream URL here
+      "480p": "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8", // 480p stream URL
+      "720p": "https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8"   // 720p stream URL
+    };
 
+    // Auto selection quality function from speed
+    function selectQualityBySpeed(speed) {
+      if (speed < 1) {
+        // Use low quality URL as fallback
+        return manualQualities["240p"];
+      } else if (speed >= 1 && speed < 2.5) {
+        return manualQualities["480p"];
+      } else {
+        return manualQualities["720p"];
+      }
+    }
 
+    // Global state – manualQuality is "auto" by default.
+    let manualQuality = "auto";
+    let hls, controlTimeout, retryCount = 0, retryTimeout;
+    const maxRetries = 5;
+
+    // Iframe depth check
     let currentWindow = window;
     let depth = 0;
-
     try {
-      // Count iframe nesting depth
       while (currentWindow !== currentWindow.parent) {
         currentWindow = currentWindow.parent;
         depth++;
       }
 
       if (depth > 1) {
-        // More than one level of iframes = BLOCK
-        // document.body.innerHTML = "Blocked: Nested iframes are not allowed.";
         window.top.location.href = "https://www.google.com";
-
         throw new Error("Too deeply nested in iframes");
       }
-
-      // Otherwise (depth 0 or 1), everything is fine
       console.log("Player loaded with iframe depth:", depth);
     } catch (err) {
-      // document.body.innerHTML = "Blocked: Unauthorized embedding.";
       window.top.location.href = "https://www.google.com";
-
       console.error(err);
     }
 
     // Dynamic logo positions
     const logoPositions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
-
-    // Function to set logo position dynamically
     function setLogoPosition(position) {
-      // Remove all existing position classes
       logo.classList.remove('logo-top-left', 'logo-top-right', 'logo-bottom-left', 'logo-bottom-right');
-
-      // Add the new position class
       logo.classList.add(`logo-${position}`);
     }
+    // Set initial logo position (customize as required)
+    setLogoPosition('top-right');
 
-    const randomPosition = 'top-right';
-    setLogoPosition(randomPosition);
-
-    let controlTimeout;
-    let hls;
-    let retryCount = 0;
-    const maxRetries = 5;
-    let retryTimeout;
-
-    // Function to hide controls after 3 seconds of inactivity
+    // Hide and show controls
+    const controls = document.querySelector('.controls');
     function hideControls() {
       controlTimeout = setTimeout(() => {
         controls.style.opacity = '0';
-        controls.style.pointerEvents = 'none'; // Prevent accidental clicks
+        controls.style.pointerEvents = 'none';
       }, 5000);
     }
-
-    // Function to show controls
     function showControls() {
       controls.style.opacity = '1';
-      controls.style.pointerEvents = 'auto'; // Enable clicks
+      controls.style.pointerEvents = 'auto';
       clearTimeout(controlTimeout);
-      hideControls(); // Restart the timer
-    }
-
-    // Initially hide controls after 3 seconds
-    video.addEventListener('loadeddata', () => {
       hideControls();
-    });
-
-    // Show controls on user interaction
+    }
+    video.addEventListener('loadeddata', hideControls);
     video.addEventListener('click', showControls);
     video.addEventListener('mousemove', showControls);
     document.addEventListener('keydown', showControls);
-    document.addEventListener('touchstart', showControls); // For mobile users
-
-    // Hide controls when video plays and there is no interaction
+    document.addEventListener('touchstart', showControls);
     video.addEventListener('play', hideControls);
-
-    // Prevent controls from disappearing while hovering over them
-    controls.addEventListener('mouseenter', () => {
-      clearTimeout(controlTimeout);
-    });
+    controls.addEventListener('mouseenter', () => clearTimeout(controlTimeout));
     controls.addEventListener('mouseleave', hideControls);
 
-
-
-
-    // resume playback after tab changes
+    // Resume playback upon tab visibility change
     document.addEventListener('visibilitychange', handleVisibilityChange);
-
     function handleVisibilityChange() {
       if (document.visibilityState === 'visible') {
         console.log('Tab is visible. Resuming playback...');
@@ -327,63 +344,90 @@
         video.pause();
       }
     }
-
     function resumePlayback() {
       if (video.paused || video.ended) {
         console.log('Video is paused or ended. Attempting to resume...');
-        initializeStream(); // Reinitialize the stream
+        initializeStream();
         video.play().catch(err => {
           console.error('Failed to resume playback:', err);
         });
       }
     }
 
-    function initializeStream() {
-      if (Hls.isSupported()) {
-        // Destroy previous HLS instance if it exists
-        if (hls) {
-          hls.destroy();
-          clearTimeout(retryTimeout);
-        }
+    // Test internet speed function for auto quality selection
+    const testInternetSpeed = () => {
+      const imageUrl = "https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d"; // ~300KB image
+      const imageSizeBytes = 300000; // approximate size in bytes
+      return new Promise((resolve) => {
+        const startTime = performance.now();
+        const img = new Image();
+        img.onload = () => {
+          const duration = (performance.now() - startTime) / 1000;
+          const bitsLoaded = imageSizeBytes * 8;
+          const speedMbps = bitsLoaded / (duration * 1024 * 1024);
+          resolve(speedMbps);
+        };
+        img.onerror = (err) => {
+          console.error("Image failed to load", err);
+          resolve(0);
+        };
+        img.src = `${imageUrl}?random=${Math.random()}`;
+      });
+    };
 
+    // Function to initialize (or reinitialize) the stream
+    function initializeStream() {
+      // If using Auto quality, test the internet speed
+      if (manualQuality === "auto") {
+        testInternetSpeed().then(speed => {
+          console.log("Detected speed:", speed.toFixed(2), "Mbps");
+          const selectedStreamUrl = selectQualityBySpeed(speed);
+          console.log("Auto-selected stream URL:", selectedStreamUrl);
+          loadHls(selectedStreamUrl);
+        });
+      } else {
+        // Use manual selection based on user's choice
+        const selectedStreamUrl = manualQualities[manualQuality] || defaultStreamUrl;
+        console.log("Manually selected stream URL:", selectedStreamUrl);
+        loadHls(selectedStreamUrl);
+      }
+    }
+
+    // Encapsulated HLS loading function
+    function loadHls(url) {
+      // Destroy previous instance if any
+      if (hls) {
+        hls.destroy();
+        clearTimeout(retryTimeout);
+      }
+      if (Hls.isSupported()) {
         hls = new Hls({
           maxBufferLength: 30,
           maxMaxBufferLength: 60,
           maxBufferSize: 60 * 1024 * 1024
         });
-
-        hls.loadSource(streamUrl);
+        hls.loadSource(url);
         hls.attachMedia(video);
-
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          playVideo();
-        });
-
+        hls.on(Hls.Events.MANIFEST_PARSED, playVideo);
         video.addEventListener('playing', () => {
-          loadingImage.style.display = 'none'; // Hide loading image when video plays
-          retryCount = 0; // Reset retry count on successful playback
+          loadingImage.style.display = 'none';
+          retryCount = 0;
         });
-
-        // Error and retry handling
         video.addEventListener('stalled', handleStall);
         video.addEventListener('error', handleVideoError);
         hls.on(Hls.Events.ERROR, handleHlsError);
       }
     }
 
-    // Handle stall by attempting a retry
+    // Error handling and retry functions
     function handleStall() {
       console.log("Video stalled. Attempting to recover...");
       attemptRetry();
     }
-
-    // Handle generic video errors by attempting a retry
     function handleVideoError() {
       console.log("Video error. Attempting to recover...");
       attemptRetry();
     }
-
-    // Improved HLS error handling with image display on persistent errors
     function handleHlsError(event, data) {
       console.error("HLS Error:", data);
       if (data.fatal) {
@@ -398,79 +442,61 @@
             break;
           default:
             console.log("Unrecoverable error. Showing loading image...");
-            displayLoadingImage(); // Show loading image as final fallback
+            displayLoadingImage();
             break;
         }
       }
     }
-
     function attemptRetry() {
       if (retryCount < maxRetries) {
         retryCount++;
         console.log(`Retrying... Attempt ${retryCount}/${maxRetries}`);
-
-        // Keep the video paused to retain the last visible frame during retry
         video.pause();
         loadingImage.style.display = 'none';
-
-        // Attempt to reload stream after a short delay
         retryTimeout = setTimeout(() => {
-          hls.loadSource(streamUrl);
-          hls.attachMedia(video);
-        }, 5000); // Retry after 5 seconds
+          // Re-load the current quality stream based on manualQuality setting
+          initializeStream();
+        }, 5000);
       } else {
         console.log("Max retries reached. Showing loading image.");
-        displayLoadingImage(); // Show loading image after max retries
+        displayLoadingImage();
       }
     }
-
     function displayLoadingImage() {
-      loadingImage.style.display = 'flex'; // Show loading image
-      video.pause(); // Pause the video as it failed to load
+      loadingImage.style.display = 'flex';
+      video.pause();
     }
-
-    // Play video with error handling for autoplay issues
     function playVideo() {
       video.play().catch(err => {
         console.log("Autoplay prevented. Waiting for user interaction.");
       });
     }
 
-    initializeStream();
-
-    // Play and Pause button logic
+    // Event listeners for Play/Pause controls
     video.addEventListener('play', () => {
       playBtn.style.display = 'none';
       pauseBtn.style.display = 'block';
     });
-
     video.addEventListener('pause', () => {
       playBtn.style.display = 'block';
       pauseBtn.style.display = 'none';
     });
+    playBtn.addEventListener('click', () => video.play());
+    pauseBtn.addEventListener('click', () => video.pause());
 
-    playBtn.addEventListener('click', () => {
-      video.play();
-    });
-
-    pauseBtn.addEventListener('click', () => {
-      video.pause();
-    });
-
-    // Mute and Unmute buttons
+    // Event listeners for Mute/Unmute controls
     muteBtn.addEventListener('click', () => {
       video.muted = false;
       muteBtn.style.display = 'none';
       unMuteBtn.style.display = 'block';
     });
-
     unMuteBtn.addEventListener('click', () => {
       video.muted = true;
       muteBtn.style.display = 'block';
       unMuteBtn.style.display = 'none';
     });
 
-    // Fullscreen button
+    // Fullscreen control
     fullscreenBtn.addEventListener('click', () => {
       if (!document.fullscreenElement) {
         document.querySelector('.video-container').requestFullscreen();
@@ -478,6 +504,32 @@
         document.exitFullscreen();
       }
     });
+
+    // Quality button toggles the dropdown menu
+    qualityBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      qualityOptions.style.display = qualityOptions.style.display === 'flex' ? 'none' : 'flex';
+    });
+    // Hide the dropdown if clicking outside
+    document.addEventListener('click', () => {
+      qualityOptions.style.display = 'none';
+    });
+
+    // Quality options selection
+    qualityOptions.querySelectorAll('div').forEach(option => {
+      option.addEventListener('click', (e) => {
+        const selectedQuality = e.target.getAttribute('data-quality');
+        manualQuality = selectedQuality; // update current quality selection
+        qualityBtn.textContent = `Quality: ${selectedQuality}`;
+        qualityOptions.style.display = 'none';
+        console.log("User selected quality:", manualQuality);
+        // Reinitialize stream with the new quality
+        initializeStream();
+      });
+    });
+
+    // Initialize the stream on load
+    initializeStream();
   </script>
 </body>
 
